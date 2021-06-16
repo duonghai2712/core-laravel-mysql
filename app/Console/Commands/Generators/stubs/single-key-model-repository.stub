@@ -1,0 +1,27 @@
+<?php namespace %%NAMESPACE%%;
+
+use App\Repositories\Eloquent\SingleKeyModelRepository;
+use \%%PATH%%\%%CLASS%%Interface;
+use \App\Models\%%NEWMODEL%%;
+
+class %%CLASS%% extends SingleKeyModelRepository implements %%CLASS%%Interface
+{
+
+    public function getBlankModel()
+    {
+        return new %%MODEL%%();
+    }
+
+    public function rules()
+    {
+        return [
+        ];
+    }
+
+    public function messages()
+    {
+        return [
+        ];
+    }
+
+}

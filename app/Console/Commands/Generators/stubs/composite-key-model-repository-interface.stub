@@ -1,0 +1,5 @@
+<?php namespace %%NAMESPACE%%;
+
+interface %%CLASS%%Interface extends CompositeKeyModelRepositoryInterface
+{
+}

@@ -1,0 +1,7 @@
+<?php namespace %%NAMESPACE%%;
+
+use App\Services\BaseServiceInterface;
+
+interface %%CLASS%%Interface extends BaseServiceInterface
+{
+}

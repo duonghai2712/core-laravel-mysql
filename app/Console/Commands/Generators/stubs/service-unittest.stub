@@ -1,0 +1,15 @@
+<?php namespace %%NAMESPACE%%;
+
+use Tests\TestCase;
+
+class %%CLASS%%Test extends TestCase
+{
+
+    public function testGetInstance()
+    {
+        /** @var  \%%PATH%%\%%CLASS%%Interface $service */
+        $service = \App::make(\%%PATH%%\%%CLASS%%Interface::class);
+        $this->assertNotNull($service);
+    }
+
+}
