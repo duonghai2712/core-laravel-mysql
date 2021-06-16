@@ -19,7 +19,7 @@ class GetQueueRabbit extends Command
      *
      * @var string
      */
-    protected $description = 'Lệnh chạy mỗi phút để lấy data từ trên queue Rabbit của app gửi lên';
+    protected $description = 'Lệnh tự động chạy khi nhận dữ liệu từ app';
 
     /**
      * Create a new command instance.

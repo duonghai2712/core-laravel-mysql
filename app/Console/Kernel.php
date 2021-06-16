@@ -13,7 +13,18 @@ class Kernel extends ConsoleKernel
      * @var array
      */
     protected $commands = [
-        //
+        \App\Console\Commands\Generators\RepositoryMakeCommand::class,
+        \App\Console\Commands\Generators\ModelMakeCommand::class,
+        \App\Console\Commands\Generators\ServiceMakeCommand::class,
+        \App\Console\Commands\Generators\HelperMakeCommand::class,
+        \App\Console\Commands\Generators\AdminCRUDMakeCommand::class,
+        \App\Console\Commands\Generators\CreateTableMigrationMakeCommand::class,
+        \App\Console\Commands\Generators\AddRelationCommand::class,
+        \App\Console\Commands\Testing\SetUpStubDatabase::class,
+        \App\Console\Commands\Testing\Execute::class,
+        \App\Console\Commands\AddPermission::class,
+        \App\Console\Commands\AddCollectionOwner::class,
+        \App\Console\Commands\GetQueueRabbit::class,
     ];
 
     /**
@@ -24,8 +35,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // $schedule->command('inspire')
-        //          ->hourly();
+         $schedule->command('queue:rabbit')->everyFiveMinutes();
     }
 
     /**

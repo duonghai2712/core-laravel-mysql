@@ -18,7 +18,7 @@ class ExcelService extends BaseService implements ExcelServiceInterface
     {
     }
 
-    public function exportToExcel($store_account_info, $path, $fileName, $data)
+    public function exportToExcel($storeAccountInfo, $path, $fileName, $data)
     {
         $spreadsheet = new Spreadsheet();
         $spreadsheet->getProperties()->setCreator('PhpOffice')

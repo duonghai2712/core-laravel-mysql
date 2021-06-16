@@ -3,17 +3,22 @@
 use App\Elibs\eCrypt;
 use App\Elibs\eFunction;
 use App\Models\Postgres\Admin\Device;
+use App\Models\Postgres\Admin\Store;
 use App\Models\Postgres\Store\LogPoint;
 use App\Models\Postgres\Store\Order;
+use App\Models\Postgres\Store\OrderDevice;
+use App\Models\Postgres\Store\StoreAccount;
 use App\Models\Postgres\Store\StoreCrossDeviceCollection;
 use App\Repositories\Postgres\Admin\AdminDeviceImageRepositoryInterface;
 use App\Repositories\Postgres\Admin\AdminDeviceStatisticRepositoryInterface;
+use App\Repositories\Postgres\Admin\BranchRepositoryInterface;
 use App\Repositories\Postgres\Admin\DeviceRepositoryInterface;
 use App\Repositories\Postgres\Admin\DeviceStatisticRepositoryInterface;
 use App\Repositories\Postgres\Admin\StoreRepositoryInterface;
 use App\Repositories\Postgres\Store\LogPointRepositoryInterface;
 use App\Repositories\Postgres\Store\OrderDeviceRepositoryInterface;
 use App\Repositories\Postgres\Store\OrderRepositoryInterface;
+use App\Repositories\Postgres\Store\StoreAccountRepositoryInterface;
 use App\Repositories\Postgres\Store\StoreCrossDeviceCollectionRepositoryInterface;
 use App\Repositories\Postgres\Store\StoreCrossDeviceStatisticRepositoryInterface;
 use App\Repositories\Postgres\Store\StoreDeviceCollectionRepositoryInterface;
@@ -26,6 +31,8 @@ use PhpAmqpLib\Connection\AMQPStreamConnection;
 class CommonService extends BaseService implements CommonServiceInterface
 {
     protected $storeRepository;
+    protected $branchRepository;
+    protected $storeAccountRepository;
     protected $logPointRepository;
     protected $adminDeviceImageRepository;
     protected $orderDeviceRepository;
@@ -43,6 +50,8 @@ class CommonService extends BaseService implements CommonServiceInterface
     public function __construct(
         AdminDeviceImageRepositoryInterface $adminDeviceImageRepository,
         LogPointRepositoryInterface $logPointRepository,
+        BranchRepositoryInterface $branchRepository,
+        StoreAccountRepositoryInterface $storeAccountRepository,
         OrderRepositoryInterface $orderRepository,
         OrderDeviceRepositoryInterface $orderDeviceRepository,
         TimeFrameRepositoryInterface $timeFrameRepository,
@@ -65,6 +74,8 @@ class CommonService extends BaseService implements CommonServiceInterface
         $this->deviceRepository = $deviceRepository;
         $this->storeRepository = $storeRepository;
         $this->orderRepository = $orderRepository;
+        $this->branchRepository = $branchRepository;
+        $this->storeAccountRepository = $storeAccountRepository;
         $this->deviceStatisticRepository = $deviceStatisticRepository;
         $this->adminDeviceStatisticRepository = $adminDeviceStatisticRepository;
         $this->storeDeviceStatisticRepository = $storeDeviceStatisticRepository;
@@ -128,7 +139,7 @@ class CommonService extends BaseService implements CommonServiceInterface
             }
         }
 
-        $orderDevices = $this->orderDeviceRepository->getAllOrderDeviceForAppByFilter(['device_id' => $device_id]);
+        $orderDevices = $this->orderDeviceRepository->getAllOrderDeviceForAppByFilter(['device_id' => $device_id, 'status' => OrderDevice::STATUS_USING]);
         if (!empty($orderDevices)){
             $orderDevicesKeyByOrderID = collect($orderDevices)->keyBy('order_id')->toArray();
             $idsOrders = collect($orderDevices)->pluck('order_id')->filter()->unique()->values()->toArray();
@@ -174,18 +185,6 @@ class CommonService extends BaseService implements CommonServiceInterface
 
 
         return $params;
-    }
-
-    public function refund($ids)
-    {
-        $devices = $this->deviceRepository->getAllDeviceByFilter(['ids' => $ids, 'deleted_at' => true]);
-        if (!empty($devices)){
-            $idsDevice = collect($devices)->pluck('id')->values()->toArray();
-            $orderDevices = $this->orderDeviceRepository->getAllOrderDeviceByFilter(['device_id' => $idsDevice]);
-            if (!empty($orderDevices)){
-
-            }
-        }
     }
 
     public function isActiveDevice($device)
@@ -252,7 +251,7 @@ class CommonService extends BaseService implements CommonServiceInterface
                                 if ((int)$val->own === Device::OWN_DOWNLOAD_ANT){
                                     $arrAdmin[] = [
                                         'device_id' => $device['id'],
-                                        'project_id' => $device['project_id'],
+                                        'project_id' => @$device['project_id'],
                                         'device_statistic_id' => (int)@$deviceStatistic->id,
                                         'image_id' => (int)@$val->collection_id,
                                         'type' => (int)@$val->type,
@@ -270,7 +269,7 @@ class CommonService extends BaseService implements CommonServiceInterface
                                 }elseif ((int)$val->own === Device::OWN_DOWNLOAD_STORE){
                                     $arrStore[] = [
                                         'device_id' => $device['id'],
-                                        'project_id' => $device['project_id'],
+                                        'project_id' => @$device['project_id'],
                                         'device_statistic_id' => (int)@$deviceStatistic->id,
                                         'collection_id' => (int)@$val->collection_id,
                                         'type' => (int)@$val->type,
@@ -288,7 +287,7 @@ class CommonService extends BaseService implements CommonServiceInterface
                                 }elseif ((int)$val->own === Device::OWN_DOWNLOAD_STORE_CROSS){
                                     $arrStoreCross[] = [
                                         'device_id' => $device['id'],
-                                        'project_id' => $device['project_id'],
+                                        'project_id' => @$device['project_id'],
                                         'device_statistic_id' => (int)@$deviceStatistic->id,
                                         'collection_id' => (int)@$val->collection_id,
                                         'type' => (int)@$val->type,
@@ -331,12 +330,49 @@ class CommonService extends BaseService implements CommonServiceInterface
 
                     \Log::info('Device Code 3 : ' . $device_code . ' - Second 3 : ' . $totalSecondGetMoney . ' - Coefficient 3 : ' . @(int)$device['branch']['rank']['coefficient']);
 
-                    if (!empty($totalSecondGetMoney)){
-                        $params['current_point']['increment'] = eFunction::getPointPlusForStore(@(int)$device['branch']['rank']['coefficient'], $totalSecondGetMoney);
-                        $params['total_point']['increment'] = eFunction::getPointPlusForStore(@(int)$device['branch']['rank']['coefficient'], $totalSecondGetMoney);
-                        $this->storeRepository->changePointStoreByFilter(['id' => (int)$device['store_id'], 'deleted_at' => true], $params);
+                    if (!empty($totalSecondGetMoney) && !empty($device['branch']['rank']['coefficient'])){
+                        \Log::info('Log Have time : 1');
+                        $pointFromSecond = eFunction::getPointPlusForStore((int)$device['branch']['rank']['coefficient'], $totalSecondGetMoney);
+                        $branch = $this->branchRepository->getOneObjectBranchByFilter(['id' => (int)$device['branch_id'], 'deleted_at' => true]);
+                        \Log::info('Make Ads : ' . $branch->make_ads . ' Branch ID : ' . (int)$device['branch_id']);
+                        if (!empty($branch) && !empty($branch->make_ads) && (int)$branch->make_ads === StoreAccount::MAKE_ADS_TRUE){
+                            if (!empty($branch->debt_point)){
+                                if (($pointFromSecond - $branch->debt_point) >= 0){
+                                    $params['current_point'] = $branch->current_point + $pointFromSecond - $branch->debt_point;
+                                    $params['debt_point'] = 0;
+                                }else{
+                                    $params['debt_point'] = $branch->debt_point - $pointFromSecond;
+                                }
+                            }else{
+                                $params['current_point'] = $branch->current_point + $pointFromSecond;
+                            }
 
-                        //Thêm hoạt đông trừ tiền của cửa hàng
+                            $params['total_point'] = $branch->total_point + $pointFromSecond;
+
+                            \Log::info('Code 4 Make Ads : ' . $branch->make_ads . ' Branch ID : ' . (int)$device['branch_id']);
+
+                            $this->branchRepository->update($branch, $params);
+                        }else{
+                            $store = $this->storeRepository->getOneObjectStoreByFilter(['id' => (int)$device['store_id'], 'deleted_at' => true]);
+                            if(!empty($store)){
+                                if (!empty($store->debt_point)){
+                                    if (($pointFromSecond - $store->debt_point) >= 0){
+                                        $params['current_point'] = $store->current_point + $pointFromSecond - $store->debt_point;
+                                        $params['debt_point'] = 0;
+                                    }else{
+                                        $params['debt_point'] = $store->debt_point - $pointFromSecond;
+                                    }
+                                }else{
+                                    $params['current_point'] = $store->current_point + $pointFromSecond;
+                                }
+
+                                $params['total_point'] = $store->total_point + $pointFromSecond;
+                            }
+
+                            $this->storeRepository->update($store, $params);
+                        }
+
+                        //Thêm hoạt đông cộng tiền tiền của cửa hàng
                         $activity = [
                             'type' => LogPoint::TYPE_BONUS_POINT,
                             'time' => $totalSecondGetMoney,
@@ -345,7 +381,7 @@ class CommonService extends BaseService implements CommonServiceInterface
                             'store_id' => (int)$device['store_id'],
                             'device_id' => $device['id'],
                             'branch_id' => (int)$device['branch_id'],
-                            'project_id' => (int)$device['project_id'],
+                            'project_id' => (int)@$device['project_id'],
                         ];
 
                         $this->logPointRepository->create($activity);
@@ -365,5 +401,21 @@ class CommonService extends BaseService implements CommonServiceInterface
                 }
             }
         }
+    }
+
+    public function changeTimeOfDeviceAdmin($device, $totalTimeAdmin, $totalTimeEmpty)
+    {
+        $this->deviceRepository->update($device, [
+            'total_time_admin' => $totalTimeAdmin,
+            'total_time_empty' => $totalTimeEmpty
+        ]);
+    }
+
+    public function changeTimeOfDeviceStore($device, $totalTimeStore, $totalTimeEmpty)
+    {
+        $this->deviceRepository->update($device, [
+            'total_time_store' => $totalTimeStore,
+            'total_time_empty' => $totalTimeEmpty
+        ]);
     }
 }

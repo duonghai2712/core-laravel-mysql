@@ -10,5 +10,9 @@ interface CommonServiceInterface extends BaseServiceInterface
 
     public function dataProcessing($data);
 
+    public function changeTimeOfDeviceAdmin($device, $totalTimeAdmin, $totalTimeEmpty);
+
+    public function changeTimeOfDeviceStore($device, $totalTimeStore, $totalTimeEmpty);
+
     public function getMessageQueueRabbit($queue_name);
 }

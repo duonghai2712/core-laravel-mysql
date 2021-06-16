@@ -2,6 +2,7 @@
 namespace App\Elibs;
 
 use App\Models\Postgres\Admin\Device;
+use App\Models\Postgres\Admin\Image;
 use App\Models\Postgres\Admin\Store;
 use App\Models\Postgres\Store\Collection;
 use App\Models\Postgres\Store\LogOperation;
@@ -69,34 +70,34 @@ class eFunction
         return $slug;
     }
 
-    public static function FillUp($account_info, &$data)
+    public static function FillUp($accountInfo, &$data)
     {
-        $data['project_id'] = $account_info['project_id'];
-        $data['account_id'] = $account_info['id'];
+        $data['project_id'] = $accountInfo['project_id'];
+        $data['account_id'] = $accountInfo['id'];
 
         return $data;
     }
 
-    public static function FillUpStore($account_info, &$data)
+    public static function FillUpStore($accountInfo, &$data)
     {
-        $data['project_id'] = $account_info['project_id'];
-        $data['store_id'] = $account_info['store_id'];
+        $data['project_id'] = $accountInfo['project_id'];
+        $data['store_id'] = $accountInfo['store_id'];
 
         return $data;
     }
 
-    public static function isAdminStore($store_account_info)
+    public static function isAdminStore($storeAccountInfo)
     {
-        if ((int)$store_account_info['role'] === StoreAccount::ADMIN){
+        if ((int)$storeAccountInfo['role'] === StoreAccount::ADMIN){
             return true;
         }
 
         return false;
     }
 
-    public static function isMakeAds($store_account_info)
+    public static function isAccountBooking($storeAccountInfo)
     {
-        if ((int)$store_account_info['make_ads'] === StoreAccount::MAKE_ADS_TRUE){
+        if ((int)$storeAccountInfo['make_ads'] === StoreAccount::MAKE_ADS_TRUE){
             return true;
         }
 
@@ -217,12 +218,17 @@ class eFunction
             $timeEnd = new DateTime($time['end_time']);
 
             $timeDiff = $timeStart->diff($timeEnd);
+            $hour = (int)$timeDiff->format("%H");
+
+            if ($time['end_time'] === '23:59:59'){
+                $hour = $hour + 1;
+            }
 
             $dateStart = new DateTime($time['start_date']);
             $dateEnd = new DateTime($time['end_date']);
 
             $dateDiff = $dateStart->diff($dateEnd);
-            $totalTimes = $totalTimes + ((int)$timeDiff->format("%H")*((int)$dateDiff->format("%d") + 1)*6);
+            $totalTimes = $totalTimes + ($hour*((int)$dateDiff->format("%d") + 1)*6);
         }
 
         return $totalTimes;
@@ -377,15 +383,16 @@ class eFunction
         return true;
     }
 
-    public static function getActivity($store_account_info, $device_id, $name_description, $key)
+    public static function getActivity($storeAccountInfo, $deviceId, $nameDescription, $key, $branchId)
     {
         $params = [
             'name' => LogOperation::ARR_NAME_LOG[$key],
-            'device_id' => !empty($device_id) ? (int)$device_id : null,
-            'description' => self::getDescription($store_account_info, $name_description, $key),
-            'store_account_id' => $store_account_info['id'],
-            'store_id' => $store_account_info['store_id'],
-            'project_id' =>  $store_account_info['project_id'],
+            'device_id' => !empty($deviceId) ? (int)$deviceId : null,
+            'description' => self::getDescription($storeAccountInfo, $nameDescription, $key),
+            'store_account_id' => $storeAccountInfo['id'],
+            'store_id' => $storeAccountInfo['store_id'],
+            'branch_id' => $branchId,
+            'project_id' =>  $storeAccountInfo['project_id'],
         ];
 
         return $params;
@@ -409,9 +416,9 @@ class eFunction
         return $coefficient*$totalPointInCollection;
     }
 
-    public static function getDescription($store_account_info, $name_description, $key)
+    public static function getDescription($storeAccountInfo, $name_description, $key)
     {
-        $name_account = !empty($store_account_info['representative']) ? $store_account_info['representative'] : $store_account_info['username'];
+        $name_account = !empty($storeAccountInfo['representative']) ? $storeAccountInfo['representative'] : $storeAccountInfo['username'];
         if (!empty($name_description)){
             return LogOperation::ARR_DESCRIPTION_TITLE . $name_account . LogOperation::ARR_DESCRIPTION_LOG[$key] . $name_description;
         }
@@ -463,4 +470,171 @@ class eFunction
             \Log::error($e->getMessage());
         }
     }
+
+    public static function mergeSubBrandToBrand($params)
+    {
+        if (!empty($params['data'])){
+            foreach ($params['data'] as $key => $value){
+                if (!empty($value['brands']) && !empty($value['sub_brands'])){
+                    foreach ($value['brands'] as $k => $brand){
+                        $subBrands = [];
+                        foreach ($value['sub_brands'] as $sub_brand){
+                            if (!empty($sub_brand['brand_id']) && !empty($brand['id']) && (int)$sub_brand['brand_id'] === $brand['id']){
+                                $subBrands[] = $sub_brand;
+                            }
+                        }
+                        if (!empty($subBrands)){
+                            $params['data'][$key]['brands'][$k]['sub_brands'] = $subBrands;
+                        }
+                    }
+
+                    unset($params['data'][$key]['sub_brands']);
+                }
+
+                if (!empty($value['account']) && !empty($value['account']['source'])){
+                    $params['data'][$key]['avatar'] = asset($value['account']['source']);
+                }else{
+                    $params['data'][$key]['avatar'] = null;
+                }
+
+                unset($params['data'][$key]['province_id']);
+                unset($params['data'][$key]['district_id']);
+                unset($params['data'][$key]['account_id']);
+                unset($params['data'][$key]['project_id']);
+            }
+        }
+
+
+        return $params;
+    }
+
+    public static function mergeSubBrandToBrandInBranch($branch)
+    {
+        if (!empty($branch['brands']) && !empty($branch['sub_brands'])){
+            foreach ($branch['brands'] as $k => $brand){
+                $subBrands = [];
+                foreach ($branch['sub_brands'] as $sub_brand){
+                    if (!empty($sub_brand['brand_id']) && !empty($brand['id']) && (int)$sub_brand['brand_id'] === $brand['id']){
+                        $subBrands[] = $sub_brand;
+                    }
+                }
+                if (!empty($subBrands)){
+                    $branch['brands'][$k]['sub_brands'] = $subBrands;
+                }
+            }
+
+            unset($branch['sub_brands']);
+        }
+
+        return $branch;
+    }
+
+    public static function addFullUrlImageAndCheckDevice($images, $storeCrossCollections)
+    {
+        if (!empty($images['data'])){
+            foreach ($images['data'] as $k => $image){
+                if (!empty($image['source'])) {
+                    $images['data'][$k]['source'] = asset($image['source']);
+                }
+
+                if (!empty($image['source_thumb'])) {
+                    $images['data'][$k]['source_thumb'] = asset($image['source_thumb']);
+                }
+
+                $isDevice = false;
+                if (!empty($image['devices'])) {
+                    foreach ($image['devices'] as $device){
+                        if (!empty($device['id'])){
+                            $isDevice = true;
+                        }
+                    }
+                }
+
+                if (!empty($storeCrossCollections) && !empty($storeCrossCollections[$image['id']])){
+                    $isDevice = true;
+                }
+
+                if(!empty($isDevice)) {
+                    $images['data'][$k]['devices'] = Device::HAS_DEVICE;
+                }else {
+                    $images['data'][$k]['devices'] = Device::NO_DEVICE;
+                }
+
+            }
+        }
+
+        return $images;
+    }
+
+    public static function getStatusDevices($devices)
+    {
+        if (!empty($devices['data'])){
+            $arrStatusDevices = [];
+            $arrDeviceCodes = collect($devices['data'])->pluck('device_code')->filter()->unique()->values()->toArray();
+            if (!empty($arrDeviceCodes)){
+                $arrStatusDevices = eFunction::checkConnectDevice($arrDeviceCodes);
+            }
+
+            foreach ($devices['data'] as $k => $device){
+                if (!empty($device['device_code']) && isset($arrStatusDevices[$device['device_code']])){
+                    if (!empty($arrStatusDevices[$device['device_code']])){
+                        $devices['data'][$k]['status'] = Device::VIEW_CONNECT;
+                    }else{
+                        $devices['data'][$k]['status'] = Device::VIEW_DISCONNECT;
+                    }
+                }else{
+                    $devices['data'][$k]['status'] = Device::VIEW_NOT_USE;
+                }
+            }
+        }
+
+        return $devices;
+    }
+
+    public static function activeDevice($device)
+    {
+        if (isset($device['is_active']) && (int)$device['is_active'] === Device::IS_ACTIVE){
+            return true;
+        }
+
+        return false;
+    }
+
+    public static function checkFileSize($image)
+    {
+        if (!empty($image) && isset($image['file_size']) && isset($image['type']) && (($image['file_size'] > Image::MAX_SIZE_IMAGE && $image['type'] === Image::IMAGE)
+                || ($image['file_size'] > Image::MAX_SIZE_VIDEO && $image['type'] === Image::VIDEO))){
+                return true;
+        }
+
+        return false;
+    }
+
+    public static function getFullUrlCollectionInDevice($deviceWithCollection)
+    {
+        if (!empty($deviceWithCollection['store_collection'])){
+            foreach ($deviceWithCollection['store_collection'] as $k => $v){
+                if (!empty($v['source'])){
+                    $deviceWithCollection['store_collection'][$k]['source'] = asset($deviceWithCollection['store_collection'][$k]['source']);
+                }
+
+                if (!empty($v['source_thumb'])){
+                    $deviceWithCollection['store_collection'][$k]['source_thumb'] = asset($deviceWithCollection['store_collection'][$k]['source_thumb']);
+                }
+            }
+        }
+
+        foreach ($deviceWithCollection['admin_image'] as $k => $v){
+            if (!empty($v['source'])){
+                $deviceWithCollection['admin_image'][$k]['source'] = asset($deviceWithCollection['admin_image'][$k]['source']);
+            }
+
+            if (!empty($v['source_thumb'])){
+                $deviceWithCollection['admin_image'][$k]['source_thumb'] = asset($deviceWithCollection['admin_image'][$k]['source_thumb']);
+            }
+        }
+
+        return $deviceWithCollection;
+    }
+
 }

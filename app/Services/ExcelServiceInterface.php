@@ -4,5 +4,5 @@ use App\Services\BaseServiceInterface;
 
 interface ExcelServiceInterface extends BaseServiceInterface
 {
-    public function exportToExcel($store_account_info, $path, $fileName, $data);
+    public function exportToExcel($storeAccountInfo, $path, $fileName, $data);
 }

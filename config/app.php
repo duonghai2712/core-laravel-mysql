@@ -1,7 +1,16 @@
 <?php
 
-return [
+$additionalProviders = [];
+if (env('APP_ENV') === 'local') {
+    $additionalProviders += [
+        'Barryvdh\LaravelIdeHelper\IdeHelperServiceProvider',
+        'Barryvdh\Debugbar\ServiceProvider',
+    ];
+}
 
+return [
+    'url_app' => env('APP_URL',''),
+    'url_app_api' => env('APP_URL_API',''),
     /*
     |--------------------------------------------------------------------------
     | Application Name
@@ -39,7 +48,7 @@ return [
     |
     */
 
-    'debug' => env('APP_DEBUG', false),
+    'debug' => (bool) env('APP_DEBUG', false),
 
     /*
     |--------------------------------------------------------------------------
@@ -67,7 +76,7 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => 'Asia/Ho_Chi_Minh',
 
     /*
     |--------------------------------------------------------------------------
@@ -80,7 +89,7 @@ return [
     |
     */
 
-    'locale' => 'en',
+    'locale' => 'vi',
 
     /*
     |--------------------------------------------------------------------------
@@ -165,16 +174,26 @@ return [
         /*
          * Package Service Providers...
          */
-
+        Mavinoo\Batch\BatchServiceProvider::class,
+        Laravel\Passport\PassportServiceProvider::class,
+        Cviebrock\EloquentSluggable\ServiceProvider::class,
         /*
          * Application Service Providers...
          */
         App\Providers\AppServiceProvider::class,
         App\Providers\AuthServiceProvider::class,
-        // App\Providers\BroadcastServiceProvider::class,
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
+        /*
+         * Original Service Providers
+         */
+        App\Providers\RepositoryBindServiceProvider::class,
+        App\Providers\ServiceBindServiceProvider::class,
+        App\Providers\HelperBindServiceProvider::class,
+        L5Swagger\L5SwaggerServiceProvider::class,
+        Maatwebsite\Excel\ExcelServiceProvider::class,
 
+        Barryvdh\Debugbar\ServiceProvider::class,
     ],
 
     /*
@@ -207,6 +226,7 @@ return [
         'File' => Illuminate\Support\Facades\File::class,
         'Gate' => Illuminate\Support\Facades\Gate::class,
         'Hash' => Illuminate\Support\Facades\Hash::class,
+        'Http' => Illuminate\Support\Facades\Http::class,
         'Lang' => Illuminate\Support\Facades\Lang::class,
         'Log' => Illuminate\Support\Facades\Log::class,
         'Mail' => Illuminate\Support\Facades\Mail::class,
@@ -225,7 +245,28 @@ return [
         'URL' => Illuminate\Support\Facades\URL::class,
         'Validator' => Illuminate\Support\Facades\Validator::class,
         'View' => Illuminate\Support\Facades\View::class,
+        'Batch' => Mavinoo\Batch\BatchFacade::class,
+        // App's Facades
+        'DateTimeHelper'         => App\Facades\DateTimeHelper::class,
+        'LocaleHelper'           => App\Facades\LocaleHelper::class,
+        'MetaInformationHelper'  => App\Facades\MetaInformationHelper::class,
+        'URLHelper'              => App\Facades\URLHelper::class,
+        'CollectionHelper'       => App\Facades\CollectionHelper::class,
+        'StringHelper'           => App\Facades\StringHelper::class,
+        'PaginationHelper'       => App\Facades\PaginationHelper::class,
+        'UserNotificationHelper' => App\Facades\UserNotificationHelper::class,
+        'TypeHelper'             => App\Facades\TypeHelper::class,
+        'RedirectHelper'         => App\Facades\RedirectHelper::class,
+        'CacheHelper'            => App\Facades\CacheHelper::class,
+        /* NEW FACADE */
+
+        'Excel'                  => Maatwebsite\Excel\Facades\Excel::class,
+        //'Image' => Intervention\Image\Facades\Image::class
 
     ],
 
+    'offline_mode'         => env('OFFLINE_MODE', null),
+    'host'                 => env('APP_HOST', null),
+    'need_locale_prefix'   => true,
+    'basic_authentication' => env('BASIC_AUTHENTICATION', true),
 ];
