@@ -57,15 +57,5 @@ class Kernel extends HttpKernel
         'auth.basic' => \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class,
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'bindings' => \Illuminate\Routing\Middleware\SubstituteBindings::class,
-        'api.allow_domain_all' => \App\Http\Middleware\Api\Postgres\DomainCheckAll::class,
-
-        'api.account_admin_auth' => \App\Http\Middleware\Api\Postgres\Admin\AccountAdminAuthentication::class,
-        'api.allow_domain_admin' => \App\Http\Middleware\Api\Postgres\Admin\DomainCheckAdmin::class,
-
-        'api.store_admin_auth' => \App\Http\Middleware\Api\Postgres\Store\AccountStoreAuthentication::class,
-        'api.allow_domain_store' => \App\Http\Middleware\Api\Postgres\Store\DomainCheckStore::class,
-
-        'api.app_auth' => \App\Http\Middleware\Api\Postgres\App\AppAuthentication::class,
-        'api.allow_domain_app' => \App\Http\Middleware\Api\Postgres\App\DomainCheckApp::class
     ];
 }

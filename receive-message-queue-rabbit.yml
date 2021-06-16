@@ -1,8 +1,0 @@
-apps:
-  - name: receive-auto-from-message-queue-rabbit
-    script: artisan
-    exec_mode: fork
-    interpreter: php
-    instances: 1
-    args:
-      - queue:rabbit

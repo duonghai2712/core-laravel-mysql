@@ -29,12 +29,9 @@
         "maatwebsite/excel": "^3.1",
         "maknz/slack": "^1.7",
         "mavinoo/laravel-batch": "^2.2",
-        "nicolaslopezj/searchable": "^1.13",
-        "php-amqplib/php-amqplib": "^3.0",
         "phpoffice/phpspreadsheet": "^1.17",
         "phpseclib/phpseclib": "~2.0",
         "predis/predis": "^1.1",
-        "vladimir-yuldashev/laravel-queue-rabbitmq": "^11.2",
         "zircote/swagger-php": "^3.1"
     },
     "require-dev": {

@@ -22,9 +22,6 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\Generators\AddRelationCommand::class,
         \App\Console\Commands\Testing\SetUpStubDatabase::class,
         \App\Console\Commands\Testing\Execute::class,
-        \App\Console\Commands\AddPermission::class,
-        \App\Console\Commands\AddCollectionOwner::class,
-        \App\Console\Commands\GetQueueRabbit::class,
     ];
 
     /**
